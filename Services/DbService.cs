@@ -88,39 +88,52 @@ public class DbService(IConfiguration configuration) : IDbService
         {
             throw new InvalidOperationException("There is already order with such product in Product_Warehouse.");
         }
-        
-        var command5 = new SqlCommand();
-        command5.Connection = connection;
-        command5.CommandText = """
-                               UPDATE [Order]
-                               Set FulfilledAt = @dateTimeNow
-                               WHERE IdOrder = @idOrder
-                               """;
-        command5.Parameters.AddWithValue("@dateTimeNow", DateTime.Now);
-        command5.Parameters.AddWithValue("@idOrder", idOrder);
-        await command5.ExecuteNonQueryAsync();
-        
-        var command6 = new SqlCommand();
-        command6.Connection = connection;
-        command6.CommandText = """
-                               INSERT INTO Product_Warehouse VALUES (
-                                                                     @idWarehouse,
-                                                                     @idProduct,
-                                                                     @idOrder,
-                                                                     @amount,
-                                                                     (SELECT Price*@amount
-                                                                      FROM Product
-                                                                      WHERE IdProduct = @idProduct),
-                                                                     @dateTimeNow
-                               );
-                               SELECT CAST(scope_identity() as INT)
-                               """;
-        command6.Parameters.AddWithValue("@idWarehouse", productWarehouseRequest.IdWarehouse);
-        command6.Parameters.AddWithValue("@idProduct",productWarehouseRequest.IdProduct);
-        command6.Parameters.AddWithValue("@idOrder", idOrder);
-        command6.Parameters.AddWithValue("@amount", productWarehouseRequest.Amount);
-        command6.Parameters.AddWithValue("@dateTimeNow", DateTime.Now);
-        var resultId = (int)(await command6.ExecuteScalarAsync())!;
-        return resultId;
+
+        await using var transaction = await connection.BeginTransactionAsync();
+        try
+        {
+
+            var command5 = new SqlCommand();
+            command5.Connection = connection;
+            command5.CommandText = """
+                                   UPDATE [Order]
+                                   Set FulfilledAt = @dateTimeNow
+                                   WHERE IdOrder = @idOrder
+                                   """;
+            command5.Transaction = (SqlTransaction)transaction;
+            command5.Parameters.AddWithValue("@dateTimeNow", DateTime.Now);
+            command5.Parameters.AddWithValue("@idOrder", idOrder);
+            await command5.ExecuteNonQueryAsync();
+
+            var command6 = new SqlCommand();
+            command6.Connection = connection;
+            command6.CommandText = """
+                                   INSERT INTO Product_Warehouse VALUES (
+                                                                         @idWarehouse,
+                                                                         @idProduct,
+                                                                         @idOrder,
+                                                                         @amount,
+                                                                         (SELECT Price*@amount
+                                                                          FROM Product
+                                                                          WHERE IdProduct = @idProduct),
+                                                                         @dateTimeNow
+                                   );
+                                   SELECT CAST(scope_identity() as INT)
+                                   """;
+            command6.Transaction = (SqlTransaction)transaction;
+            command6.Parameters.AddWithValue("@idWarehouse", productWarehouseRequest.IdWarehouse);
+            command6.Parameters.AddWithValue("@idProduct", productWarehouseRequest.IdProduct);
+            command6.Parameters.AddWithValue("@idOrder", idOrder);
+            command6.Parameters.AddWithValue("@amount", productWarehouseRequest.Amount);
+            command6.Parameters.AddWithValue("@dateTimeNow", DateTime.Now);
+            var resultId = (int)(await command6.ExecuteScalarAsync())!;
+            await transaction.CommitAsync();
+            return resultId;
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
