@@ -15,7 +15,7 @@ public class WarehouseController(IDbService dbService) : ControllerBase
         int result;
         try
         {
-            result = await dbService.ExecuteCommandAndGetProduct_WarehouseId(productWarehouseRequest);
+            result = await dbService.ExecuteCommandAndGetProduct_WarehouseIdAsync(productWarehouseRequest);
         }
         catch (ArgumentException e)
         {

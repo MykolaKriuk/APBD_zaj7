@@ -6,7 +6,7 @@ namespace APBD_zaj7.Services;
 
 public interface IDbService
 {
-    public Task<int> ExecuteCommandAndGetProduct_WarehouseId(Product_WarehouseDTO productWarehouseRequest);
+    public Task<int> ExecuteCommandAndGetProduct_WarehouseIdAsync(Product_WarehouseDTO productWarehouseRequest);
 }
 
 public class DbService(IConfiguration configuration) : IDbService
@@ -22,7 +22,7 @@ public class DbService(IConfiguration configuration) : IDbService
         return connection;
     }
     
-    public async Task<int> ExecuteCommandAndGetProduct_WarehouseId(Product_WarehouseDTO productWarehouseRequest)
+    public async Task<int> ExecuteCommandAndGetProduct_WarehouseIdAsync(Product_WarehouseDTO productWarehouseRequest)
     {
         await using var connection = await GetConnection();
         
